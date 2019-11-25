@@ -1,7 +1,5 @@
-%
-% (C) Copyright 2004.-, HyunJung (Helen) Shin (2004-12-16).
-%
-function [ROCscore,CpuTime,gBeta] = starter
+
+function [ROCscore,CpuTime,gBeta] = starter(C,Y)
 
 clear all;
 
@@ -9,14 +7,12 @@ clear all;
 % Data Information
 %--------------------------------------------------------------------
 % data loading.... 
-% "L{.}": Normalized Laplacian, 5 x [ 3588 x 3588 ]
-% "W{.}": Similarity Matrix, 5 x [ 3588 x 3588 ]
-% "yMat"   : output [3588 x 13]
+% "L{.}": Normalized Laplacian
+% "W{.}": Similarity Matrix,
+% "yMat"   : output
 %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-% TODO: NOTE: W is not used, just the Laplacian matrices L
-fileHead  = 'multi_biograph';
+fileHead  = 'measurement';
 
 % Create result file in res/ subfolder
 rltFileName = sprintf('res/%s_res.txt', fileHead);
@@ -24,33 +20,17 @@ rltFileName = sprintf('res/%s_res.txt', fileHead);
 % Load the multi_biograph.mat file in the root
 load( sprintf('%s.mat', fileHead) ); 
 
-CV_fold = 5;                 % The number of folds used for Cross-Validation 
-KindOfClass = [1:13];        % Define the Output class 
+CV_fold = 10;  
 
-% K is the number of datasets (5 here) 
-K = 5;    
-% const is used for class balancing within FindingSolution function
+
+% K is the number of datasets
+K = 3;    
 const = 0.7;
-% ratio is used to calculate C0  = ratio*C
 ratio  = 0.4;
 
-% Loop over each class. "cls" is the class index for Output class
-for cls=1: length(KindOfClass) % 
   
-  switch cls  % C determined by cross-validation
-    case {1, 2, 7, 8},      C=5.0; 
-    case {5, 6, 9, 10},     C=10.0; 
-    case {3, 4, 13},        C=25;  
-    case {11},              C=100; 
-    case {12},              C=2.5;
-  end
-  
-  % TODO: check C0
   C0  = ratio*C; 
 
-  % yMat is a <3588x13 doubles> (n.b nb of proteins = 3588)
-  % yMat(x,y) equals 1 if prot. x is of class y, -1 else
-  Y = yMat(:,KindOfClass(cls));
   
   % Check for Class Imbalance
   NData  = length(Y);
@@ -58,33 +38,27 @@ for cls=1: length(KindOfClass) %
   info=sprintf('\n\n Class( 1): %d\n Class(-1): %d\n', NClass(2), NClass(1));
   fprintf('%s',info);    
 
-  % Data Partition for Cross-Validation
-  % find prot. indices that are not in the current cls class
+
   IndexC1 = find(Y==-1);
-  % Set difference of two arrays
-  % C = setdiff(A,B) returns the data in A that is not in B.
   IndexC2 = setdiff([1:NData]', IndexC1);
  
-  % Get the number of elements whithin each of the k-fold subsamples
   LengthOfAfoldC1 = floor(length(IndexC1)/CV_fold);
   LengthOfAfoldC2 = floor(length(IndexC2)/CV_fold);
 
   % For each k-fold subsamples
   for cv=1:CV_fold    
     
-    % Get the test indexes  
+
     TeIndex = [IndexC1(LengthOfAfoldC1*(cv-1)+1 : LengthOfAfoldC1*cv);...
       IndexC2(LengthOfAfoldC2*(cv-1)+1 : LengthOfAfoldC2*cv)];
     % Get the training indexes
     TrIndex = setdiff([1:NData]', TeIndex);
     
-    % beta is output/input of FindingSolution function
-    % it the weights vector of each dataset
+
     beta  = zeros(K,1);
 
     cputime1  = cputime;
-    % Call of the main function. 
-    % L is the graph laplacian matrix (read from multi_biograph.mat file) 
+   
     [beta, Z] = FindingSolution(beta, C, C0, L, Y, TrIndex, TeIndex, const);
     cputime2  = cputime;
     
@@ -135,7 +109,7 @@ for cls=1: length(KindOfClass) %
     
   fclose(Fp);  
      
-end 
+
 
 
 
